@@ -1,0 +1,22 @@
+# Папки Unity
+/[Ll]ibrary/
+/[Tt]emp/
+/[Oo]bj/
+/[Bb]uild/
+/[Bb]uilds/
+/[Ll]ogs/
+/[Uu]ser[Ss]ettings/
+
+# Папки IDE (редакторов кода)
+.vs/
+.idea/
+.vscode/
+
+# Файлы системы
+.DS_Store
+Thumbs.db
+
+# Игнорировать файлы метаданных, которые не нужны
+*.pidb.meta
+*.pdb.meta
+*.mdb.meta
