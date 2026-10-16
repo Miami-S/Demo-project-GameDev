@@ -1,0 +1,30 @@
+using UnityEngine;
+using UnityEngine.SceneManagement;
+
+public class MainMenu : MonoBehaviour
+{
+    public GameObject settingsPanel;
+
+    public void PlayGame()
+    {
+        // Загружаем игровую сцену. Имя должно совпадать с Build Settings
+        SceneManager.LoadScene("GameScene");
+    }
+
+    public void OpenSettings()
+    {
+        settingsPanel.SetActive(true);
+    }
+
+    public void CloseSettings()
+    {
+        settingsPanel.SetActive(false);
+    }
+
+    public void QuitGame()
+    {
+        Debug.Log("Выход из игры");
+        Application.Quit();
+    }
+}
+
