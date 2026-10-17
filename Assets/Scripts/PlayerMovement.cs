@@ -2,59 +2,78 @@ using UnityEngine;
 
 public class PlayerMovement : MonoBehaviour
 {
-    public CharacterController controller;
+    [Header("Ссылки")]
+    [SerializeField] private CharacterController controller;
 
-    public float speed = 6f;          // Скорость ходьбы
-    public float gravity = -9.81f;    // Сила гравитации
-    public float jumpHeight = 1.5f;   // Высота прыжка
-    public float turnSmoothTime = 0.1f; // Плавность поворота
+    [Header("Движение")]
+    [SerializeField] private float walkSpeed = 6f;
+    [SerializeField] private float turnSmoothTime = 0.1f;
 
-    Vector3 velocity;
-    float turnSmoothVelocity;
+    [Header("Прыжок и гравитация")]
+    [SerializeField] private float gravity = -9.81f;
+    [SerializeField] private float jumpHeight = 1.5f;
+    [SerializeField] private float groundedStick = -2f;
 
-    void Start()
+    private Transform cameraTransform;
+    private Vector3 verticalVelocity;
+    private float turnSmoothVelocity;
+
+    private void Awake()
     {
-        // Автоматически находим Character Controller на игроке
-        controller = GetComponent<CharacterController>();
+        if (controller == null)
+            controller = GetComponent<CharacterController>();
+
+        if (Camera.main != null)
+            cameraTransform = Camera.main.transform;
     }
 
-    void Update()
+    private void Update()
     {
-        // 1. Проверяем, на земле ли игрок
-        bool isGrounded = controller.isGrounded;
-        if (isGrounded && velocity.y < 0)
-        {
-            velocity.y = -2f; // Сбрасываем падение
-        }
+        HandleGravity();
+        HandleMovement();
+        HandleJump();
+    }
 
-        // 2. Получаем нажатия клавиш (WASD или стрелки)
+    private void HandleGravity()
+    {
+        bool isGrounded = controller.isGrounded;
+
+        if (isGrounded && verticalVelocity.y < 0f)
+            verticalVelocity.y = groundedStick;
+
+        verticalVelocity.y += gravity * Time.deltaTime;
+        controller.Move(verticalVelocity * Time.deltaTime);
+    }
+
+    private void HandleMovement()
+    {
         float horizontal = Input.GetAxis("Horizontal");
         float vertical = Input.GetAxis("Vertical");
-        Vector3 direction = new Vector3(horizontal, 0f, vertical).normalized;
+        Vector3 inputDirection = new Vector3(horizontal, 0f, vertical).normalized;
 
-        // 3. Движение и поворот
-        if (direction.magnitude >= 0.1f)
-        {
-            // Вычисляем угол поворота относительно камеры
-            float targetAngle = Mathf.Atan2(direction.x, direction.z) * Mathf.Rad2Deg + Camera.main.transform.eulerAngles.y;
-            float angle = Mathf.SmoothDampAngle(transform.eulerAngles.y, targetAngle, ref turnSmoothVelocity, turnSmoothTime);
+        if (inputDirection.magnitude < 0.1f)
+            return;
 
-            // Поворачиваем игрока
-            transform.rotation = Quaternion.Euler(0f, angle, 0f);
+        float targetAngle = Mathf.Atan2(inputDirection.x, inputDirection.z) * Mathf.Rad2Deg
+                            + cameraTransform.eulerAngles.y;
 
-            // Двигаем игрока вперед
-            Vector3 moveDir = Quaternion.Euler(0f, targetAngle, 0f) * Vector3.forward;
-            controller.Move(moveDir.normalized * speed * Time.deltaTime);
-        }
+        float smoothedAngle = Mathf.SmoothDampAngle(
+            transform.eulerAngles.y,
+            targetAngle,
+            ref turnSmoothVelocity,
+            turnSmoothTime);
 
-        // 4. Прыжок
-        if (Input.GetButtonDown("Jump") && isGrounded)
-        {
-            velocity.y = Mathf.Sqrt(jumpHeight * -2f * gravity);
-        }
+        transform.rotation = Quaternion.Euler(0f, smoothedAngle, 0f);
 
-        // 5. Применяем гравитацию
-        velocity.y += gravity * Time.deltaTime;
-        controller.Move(velocity * Time.deltaTime);
+        Vector3 moveDirection = Quaternion.Euler(0f, targetAngle, 0f) * Vector3.forward;
+        controller.Move(moveDirection.normalized * walkSpeed * Time.deltaTime);
+    }
+
+    private void HandleJump()
+    {
+        if (!Input.GetButtonDown("Jump") || !controller.isGrounded)
+            return;
+
+        verticalVelocity.y = Mathf.Sqrt(jumpHeight * -2f * gravity);
     }
 }

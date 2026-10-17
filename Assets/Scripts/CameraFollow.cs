@@ -2,41 +2,68 @@ using UnityEngine;
 
 public class CameraFollow : MonoBehaviour
 {
-    public Transform target;            // Ссылка на игрока
-    public float distance = 5f;         // Дистанция от камеры до игрока
-    public float sensitivity = 3f;      // Чувствительность мыши
-    public float height = 2f;           // Высота камеры над игроком
+    [Header("Цель")]
+    [SerializeField] private Transform target;
+    [SerializeField] private float targetLookHeight = 1.5f;
 
-    public float minY = -20f;           // Максимальный угол взгляда вниз
-    public float maxY = 60f;            // Максимальный угол взгляда вверх
+    [Header("Позиция камеры")]
+    [SerializeField] private float distance = 5f;
+    [SerializeField] private float height = 2f;
 
-    private float currentX = 0f;
-    private float currentY = 0f;
+    [Header("Управление мышью")]
+    [SerializeField] private float sensitivity = 3f;
+    [SerializeField] private float minPitch = -20f;
+    [SerializeField] private float maxPitch = 60f;
 
-    void Start()
+    private float yaw;
+    private float pitch;
+
+    private void Start()
     {
-        // Прячем и блокируем курсор мыши в центре экрана
+        LockCursor();
+    }
+
+    private void LateUpdate()
+    {
+        if (target == null)
+            return;
+
+        ReadMouseInput();
+        ApplyCameraTransform();
+    }
+
+    private void LockCursor()
+    {
         Cursor.lockState = CursorLockMode.Locked;
         Cursor.visible = false;
     }
 
-    void LateUpdate()
+    private void ReadMouseInput()
     {
-        if (target == null) return;
+        yaw += Input.GetAxis("Mouse X") * sensitivity;
+        pitch -= Input.GetAxis("Mouse Y") * sensitivity;
 
-        // 1. Получаем движение мыши
-        currentX += Input.GetAxis("Mouse X") * sensitivity;
-        currentY -= Input.GetAxis("Mouse Y") * sensitivity;
+        pitch = Mathf.Clamp(pitch, minPitch, maxPitch);
+    }
 
-        // 2. Ограничиваем взгляд по вертикали, чтобы камера не переворачивалась
-        currentY = Mathf.Clamp(currentY, minY, maxY);
+    private void ApplyCameraTransform()
+    {
+        Quaternion rotation = Quaternion.Euler(pitch, yaw, 0f);
 
-        // 3. Вычисляем новое положение и поворот камеры
-        Quaternion rotation = Quaternion.Euler(currentY, currentX, 0);
-        Vector3 position = target.position - (rotation * Vector3.forward * distance) + (Vector3.up * height);
+        Vector3 position = target.position
+                         - rotation * Vector3.forward * distance
+                         + Vector3.up * height;
 
-        // 4. Применяем позицию и заставляем камеру смотреть на игрока
         transform.position = position;
-        transform.LookAt(target.position + Vector3.up * 1.5f); // Смотрим чуть выше ног игрока
+        transform.LookAt(target.position + Vector3.up * targetLookHeight);
+    }
+
+    private void Update()
+    {
+        if (Input.GetKeyDown(KeyCode.Escape))
+        {
+            Cursor.lockState = CursorLockMode.None;
+            Cursor.visible = true;
+        }
     }
 }
