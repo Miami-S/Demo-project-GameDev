@@ -9,6 +9,7 @@ public class CameraFollow : MonoBehaviour
     [Header("Позиция камеры")]
     [SerializeField] private float distance = 5f;
     [SerializeField] private float height = 2f;
+    [SerializeField] private float shoulderOffset = 0.7f;
 
     [Header("Управление мышью")]
     [SerializeField] private float sensitivity = 3f;
@@ -50,12 +51,21 @@ public class CameraFollow : MonoBehaviour
     {
         Quaternion rotation = Quaternion.Euler(pitch, yaw, 0f);
 
+        Vector3 lateralOffset = rotation * Vector3.left * shoulderOffset;
+
         Vector3 position = target.position
                          - rotation * Vector3.forward * distance
-                         + Vector3.up * height;
+                         + Vector3.up * height
+                         + lateralOffset;
 
         transform.position = position;
-        transform.LookAt(target.position + Vector3.up * targetLookHeight);
+
+        
+        Vector3 lookTarget = target.position
+                           + Vector3.up * targetLookHeight
+                           + lateralOffset;
+
+        transform.LookAt(lookTarget);
     }
 
     private void Update()

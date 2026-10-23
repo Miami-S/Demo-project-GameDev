@@ -7,7 +7,6 @@ public class MainMenu : MonoBehaviour
 
     public void PlayGame()
     {
-        // Загружаем игровую сцену. Имя должно совпадать с Build Settings
         SceneManager.LoadScene("GameScene");
     }
 
