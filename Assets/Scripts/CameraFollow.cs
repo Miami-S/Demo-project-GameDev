@@ -16,6 +16,11 @@ public class CameraFollow : MonoBehaviour
     [SerializeField] private float minPitch = -20f;
     [SerializeField] private float maxPitch = 60f;
 
+    [Header("Коллизия камеры")] // НОВОЕ
+    [SerializeField] private float cameraRadius = 0.3f;
+    [SerializeField] private LayerMask collisionMask;
+    [SerializeField] private float minDistance = 1f;
+
     private float yaw;
     private float pitch;
 
@@ -26,6 +31,8 @@ public class CameraFollow : MonoBehaviour
 
     private void LateUpdate()
     {
+        if (Time.timeScale == 0f) return;
+
         if (target == null)
             return;
 
@@ -51,20 +58,36 @@ public class CameraFollow : MonoBehaviour
     {
         Quaternion rotation = Quaternion.Euler(pitch, yaw, 0f);
 
+        // 1. Вычисляем точку, на которую смотрит камера (голова игрока + сдвиг влево)
         Vector3 lateralOffset = rotation * Vector3.left * shoulderOffset;
+        Vector3 lookTarget = target.position + Vector3.up * targetLookHeight + lateralOffset;
 
-        Vector3 position = target.position
-                         - rotation * Vector3.forward * distance
-                         + Vector3.up * height
-                         + lateralOffset;
+        // 2. Вычисляем идеальную позицию камеры (как было в оригинале)
+        Vector3 desiredPosition = target.position
+                                - rotation * Vector3.forward * distance
+                                + Vector3.up * height
+                                + lateralOffset;
 
-        transform.position = position;
+        // 3. Вычисляем расстояние и направление от головы игрока к идеальной камере
+        Vector3 direction = (desiredPosition - lookTarget).normalized;
+        float desiredDistance = Vector3.Distance(lookTarget, desiredPosition);
 
-        
-        Vector3 lookTarget = target.position
-                           + Vector3.up * targetLookHeight
-                           + lateralOffset;
+        float finalDistance = desiredDistance;
 
+        // 4. Пускаем луч с толщиной (SphereCast) от головы игрока в сторону камеры
+        RaycastHit hit;
+        if (Physics.SphereCast(lookTarget, cameraRadius, direction, out hit, desiredDistance, collisionMask))
+        {
+            // Если врезались в стену, ставим камеру прямо перед ней
+            finalDistance = hit.distance;
+
+            // Не даем камере прилипнуть вплотную к лицу игрока
+            if (finalDistance < minDistance)
+                finalDistance = minDistance;
+        }
+
+        // 5. Применяем финальную позицию
+        transform.position = lookTarget + direction * finalDistance;
         transform.LookAt(lookTarget);
     }
 

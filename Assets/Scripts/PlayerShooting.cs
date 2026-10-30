@@ -1,88 +1,82 @@
-using System.Collections;
+﻿using System.Collections;
 using UnityEngine;
+using UnityEngine.Audio;
 
 public class PlayerShooting: MonoBehaviour
 {
-    [Header("������")]
     public Transform gunMuzzle;
-    public GameObject muzzleFlashPrefab;
-    public GameObject hitEffectPrefab;  
-    public LineRenderer tracerLine;     
+    public GameObject flashEffect;
+    public LineRenderer tracer;
 
-    [Header("���������")]
     public float range = 100f;
     public int damage = 10;
     public float fireRate = 0.2f;
-    public float tracerTime = 0.05f;
 
-    private float nextFireTime = 0f;
-    private Camera playerCamera;
+    private float nextFire = 0f;
+    private Camera cam;
+
+    [Header("Audio Settings")]
+    public AudioSource audioSource;          // Перетащи сюда AudioSource с игрока
+    public AudioResource shootContainer;     // Перетащи сюда твой Audio Random Container
+    [Range(0f, 1f)] public float shootVolume = 0.5f;
 
     void Start()
     {
-        playerCamera = Camera.main;
+        cam = Camera.main;
+        tracer.enabled = false;
+        tracer.positionCount = 2; // Обязательно 2 точки
 
-        if (tracerLine != null)
-            tracerLine.enabled = false;
     }
 
     void Update()
     {
-        if (Input.GetButtonDown("Fire1") && Time.time >= nextFireTime)
+        if (Input.GetButtonDown("Fire1") && Time.time >= nextFire)
         {
-            nextFireTime = Time.time + fireRate;
+            nextFire = Time.time + fireRate;
             Shoot();
         }
     }
 
     void Shoot()
     {
-        if (muzzleFlashPrefab != null)
+        // Вспышка
+        if (flashEffect != null)
+            Destroy(Instantiate(flashEffect, gunMuzzle.position, gunMuzzle.rotation), 1f);
+
+        if (audioSource != null && shootContainer != null)
         {
-            GameObject flash = Instantiate(muzzleFlashPrefab, gunMuzzle.position, gunMuzzle.rotation);
-            Destroy(flash, 1f); 
+            audioSource.volume = shootVolume;
+            audioSource.resource = shootContainer; // Наш ARC
+            audioSource.Play();
         }
 
-        Ray ray = playerCamera.ViewportPointToRay(new Vector3(0.5f, 0.5f, 0f));
+        // Луч из центра экрана
+        Ray ray = cam.ViewportPointToRay(new Vector3(0.5f, 0.5f, 0f));
         RaycastHit hit;
         Vector3 endPoint;
 
         if (Physics.Raycast(ray, out hit, range))
         {
             endPoint = hit.point;
-            Debug.Log("������ �: " + hit.transform.name);
 
-            if (hitEffectPrefab != null)
-            {
-                GameObject sparks = Instantiate(hitEffectPrefab, hit.point, Quaternion.LookRotation(hit.normal));
-                Destroy(sparks, 2f);
-            }
-
-            DroneHealth drone = hit.transform.GetComponent<DroneHealth>();
-            if (drone != null)
-            {
-                drone.TakeDamage(damage);
-            }
+            // Если попали в дрона - бьем его
+            DroneAI drone = hit.collider.GetComponentInParent<DroneAI>();
+            if (drone != null) drone.TakeDamage(damage);
         }
         else
         {
-            endPoint = ray.GetPoint(range);
+            endPoint = ray.GetPoint(range); // Если промахнулись, луч летит в даль
         }
 
-        if (tracerLine != null)
-        {
-            StartCoroutine(ShowTracer(gunMuzzle.position, endPoint));
-        }
+        // Рисуем линию и выключаем её через 0.05 сек
+        tracer.enabled = true;
+        tracer.SetPosition(0, gunMuzzle.position);
+        tracer.SetPosition(1, endPoint);
+        Invoke("HideTracer", 0.05f);
     }
 
-    IEnumerator ShowTracer(Vector3 start, Vector3 end)
+    void HideTracer()
     {
-        tracerLine.enabled = true;
-        tracerLine.SetPosition(0, start);
-        tracerLine.SetPosition(1, end);
-
-        yield return new WaitForSeconds(tracerTime);
-
-        tracerLine.enabled = false;
+        tracer.enabled = false;
     }
 }
